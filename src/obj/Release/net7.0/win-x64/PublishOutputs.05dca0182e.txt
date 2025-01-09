@@ -1,0 +1,2 @@
+C:\Users\HomeOne\Projects\KOTOR_Web\KOTOR_Web\KOTOR_Web\bin\Release\net7.0\win-x64\publish\KOTOR_Web.exe
+C:\Users\HomeOne\Projects\KOTOR_Web\KOTOR_Web\KOTOR_Web\bin\Release\net7.0\win-x64\publish\KOTOR_Web.pdb

@@ -1,0 +1,2 @@
+C:\Users\Eclipse\Dropbox\_Space\KCP\static-html-generator\bin\Release\net7.0\publish\win-x64\StaticHtmlGenerator.pdb
+C:\Users\Eclipse\Dropbox\_Space\KCP\static-html-generator\bin\Release\net7.0\publish\win-x64\StaticHtmlGenerator.exe
