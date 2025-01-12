@@ -12,12 +12,19 @@ using Path = System.IO.Path;
 namespace StaticHtmlGenerator {
 	public static class Program {
 		private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+
 		public static void Main(string[] args) {
 			string workingDirectory = Directory.GetCurrentDirectory();
 
 			LogManager.Setup().LoadConfiguration(builder => {
-				builder.ForLogger().FilterMinLevel(LogLevel.Info).WriteToConsole();
-				builder.ForLogger().FilterMinLevel(LogLevel.Debug).WriteToFile(fileName: "debug.txt");
+				builder
+					.ForLogger()
+					.FilterMinLevel(LogLevel.Info)
+					.WriteToConsole();
+				builder
+					.ForLogger()
+					.FilterMinLevel(LogLevel.Debug)
+					.WriteToFile(Path.Combine(workingDirectory, "logs", GetDebugLogFileName()));
 			});
 
 			string schemaPath = Path.Combine(workingDirectory, "manifest.xsd");
@@ -66,6 +73,10 @@ namespace StaticHtmlGenerator {
 			generator.Build();
 
 			LogManager.Shutdown();
+		}
+
+		private static string GetDebugLogFileName() {
+			return Guid.NewGuid().ToString("n")	+ ".txt";
 		}
 	}
 }
