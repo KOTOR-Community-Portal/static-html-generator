@@ -11,8 +11,8 @@ namespace StaticHtmlGenerator.Html {
 				.ReplaceLineEndings()
 				.ReplaceSpoilers()
 				.ToString()
-				.ReplaceEmptyLines()
-				.ReplaceLineBreaks();
+				.ReplaceLineBreaks()
+				.ReplaceEmptyLines();
 			var pipeline = new MarkdownPipelineBuilder()
 				.UseCustomContainers()
 				.UseEmphasisExtras()
