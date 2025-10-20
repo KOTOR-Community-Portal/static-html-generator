@@ -90,6 +90,16 @@ namespace StaticHtmlGenerator {
 			}
 		}
 
+		private static HtmlNode FindChildByNodeType(HtmlNode node, HtmlNodeType nodeType) {
+			for( int i = 0; i < node.ChildNodes.Count; ++i ) {
+				var child = node.ChildNodes[i];
+				if( child.NodeType == nodeType ) {
+					return child;
+				}
+			}
+			return null;
+		}
+
 		private static int GetHeadingLevel(string htmlName) {
 			return htmlName.Length == 2
 				&& htmlName[0] == 'h'
@@ -119,9 +129,18 @@ namespace StaticHtmlGenerator {
 			destinationNodes.Push(destination);
 			var previousDestination = destinationNodes.Peek();
 			foreach( var currentNode in content.ChildNodes ) {
-				if( templateBranches.TryGetValue(currentNode.Name, out var templateBranch) ) {
+				Branch<int> templateBranch = default;
+				bool hasTemplate = false;
+				int anchorIndex = 0;
+				var anchorNode = currentNode;
+				while( anchorNode != null
+					&& !(hasTemplate = templateBranches.TryGetValue(anchorNode.Name, out templateBranch)) ) {
+					anchorNode = FindChildByNodeType(anchorNode, HtmlNodeType.Element);
+					++anchorIndex;
+				}
+				if( hasTemplate ) {
 					bool isSameLevel = templateBranch == previousBranch;
-					bool hasSeparator = template.TrySelect(XPaths.WithClass($"{currentNode.Name}-sep"), out var separator)
+					bool hasSeparator = template.TrySelect(XPaths.WithClass($"{anchorNode.Name}-sep"), out var separator)
 						&& previousBranch.Count > 0;
 					var commonAncestors = previousBranch.GetCommonAncestors(templateBranch).ToList();
 					int templateCount = commonAncestors.Count;
@@ -131,6 +150,14 @@ namespace StaticHtmlGenerator {
 						for( int i = 0; i < templateCount; ++i )
 							templateNode = templateNode.ChildNodes[commonAncestors[i]];
 						destinationNodes.Pop();
+						if( anchorNode != currentNode ) {
+							var parentNode = anchorNode.ParentNode;
+							while( parentNode != currentNode ) {
+								destinationNodes.Peek().AppendChild(parentNode.CloneNode(deep: false));
+								parentNode = parentNode.ParentNode;
+							}
+							destinationNodes.Peek().AppendChild(currentNode.CloneNode(deep: false));
+						}
 						if( hasSeparator ) {
 							var destinationAncestors = new Stack<HtmlNode>();
 							while( destinationNodes.Count > 1 )
@@ -155,15 +182,18 @@ namespace StaticHtmlGenerator {
 					for( int i = templateCount; i < templateBranch.Count; ++i ) {
 						templateNode = templateNode.ChildNodes[templateBranch[i]];
 						var currentDestination = templateNode.CloneNode(deep: false);
-						currentDestination.CloneAttributes(currentNode);
+						if( i == anchorIndex )
+							currentDestination.CloneAttributes(currentNode);
 						previousDestination.AppendChild(currentDestination);
 						destinationNodes.Push(currentDestination);
 						previousDestination = currentDestination;
 					}
-					var childNodes = new List<HtmlNode>(currentNode.ChildNodes);
+					var childNodes = new List<HtmlNode>(anchorNode.ChildNodes);
 					foreach( var child in childNodes )
 						previousDestination.AppendChild(child);
-					previousBranch = templateBranch;
+					previousBranch = anchorNode == currentNode
+						? templateBranch
+						: new(templateBranch.Take(templateBranch.Count - anchorIndex - 1));
 				}
 				else {
 					var clone = currentNode.CloneNode(deep: true);
@@ -228,6 +258,7 @@ namespace StaticHtmlGenerator {
 					|| node.Name == "hr"
 					|| node.Name == "ol"
 					|| node.Name == "ul"
+					|| node.Name == "dl"
 					|| node.Name == "a"
 					|| node.Name == "img"
 					|| node.Name == "table"
