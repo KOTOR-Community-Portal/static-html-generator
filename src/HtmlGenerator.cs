@@ -46,6 +46,7 @@ namespace StaticHtmlGenerator {
 		public void Generate(HtmlDocument htmlDoc, IHtmlGeneratorContext context) {
 			HandleTokens(htmlDoc, context);
 			HandleInsertion(htmlDoc, context);
+			HandleIds(htmlDoc);
 			HandleTableHeaders(htmlDoc);
 			HandleNavigation(htmlDoc, context);
 			HandleTableOfContents(htmlDoc);
@@ -213,11 +214,6 @@ namespace StaticHtmlGenerator {
 				int currentLevel = GetHeadingLevel(node.Name);
 				if( currentLevel > 0 ) {
 					var nodeText = HtmlEntity.DeEntitize(node.InnerHtml);
-					string id = node.GetAttributeValue("id", "");
-					if( id == "" ) {
-						id = Text.CleanPath(WebUtility.HtmlDecode(node.InnerText));
-						node.Attributes.Add("id", id);
-					}
 					if( currentLevel >= previousLevel ) {
 						for( int i = previousLevel; i < currentLevel; ++i ) {
 							var newList = htmlDoc.CreateElement("ul");
@@ -235,6 +231,7 @@ namespace StaticHtmlGenerator {
 					var list = listNodes.Peek();
 					var item = htmlDoc.CreateElement("li");
 					var link = htmlDoc.CreateElement("a");
+					string id = node.GetAttributeValue("id", "");
 					link.Attributes.Add("href", "#" + id);
 					link.InnerHtml = nodeText;
 					item.AppendChild(link);
@@ -379,6 +376,18 @@ namespace StaticHtmlGenerator {
 					HandleBuildPath(node, "href", relativeDirectory, workingDirectory);
 				if( node.Attributes.Contains("src") )
 					HandleBuildPath(node, "src", relativeDirectory, workingDirectory);
+			}
+		}
+
+		private void HandleIds(HtmlDocument htmlDoc) {
+			foreach( var node in htmlDoc.DocumentNode.Descendants() ) {
+				if( GetHeadingLevel(node.Name) > 0 ) {
+					string id = node.GetAttributeValue("id", "");
+					if( id == "" ) {
+						id = Text.CleanPath(WebUtility.HtmlDecode(node.InnerText));
+						node.Attributes.Add("id", id);
+					}
+				}
 			}
 		}
 
