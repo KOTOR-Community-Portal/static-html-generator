@@ -259,6 +259,7 @@ namespace StaticHtmlGenerator {
 					|| node.Name == "a"
 					|| node.Name == "img"
 					|| node.Name == "table"
+					|| node.Name == "blockquote"
 				);
 		}
 
