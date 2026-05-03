@@ -1,0 +1,18 @@
+{
+  "name": "static-html-generator",
+  "version": "1.0.0",
+  "description": "Static HTML generator",
+  "main": "src/index.js",
+  "type": "module",
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^29.0.0",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "fs": "^0.0.1-security"
+  },
+  "dependencies": {
+    "cheerio": "^1.1.2",
+    "esprima": "^4.0.1",
+    "slug": "^11.0.1",
+    "slugify": "^1.6.6"
+  }
+}

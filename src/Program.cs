@@ -1,82 +1,80 @@
 ﻿using NLog;
-using System;
-using System.Collections.Generic;
+using System; 
 using System.IO;
-using System.Xml;
-using System.Xml.Linq;
-using System.Xml.Schema;
 
-using Directory = System.IO.Directory;
-using Path = System.IO.Path;
+namespace StaticHtmlGenerator;
 
-namespace StaticHtmlGenerator {
-	public static class Program {
-		private static readonly Logger Logger = LogManager.GetCurrentClassLogger();
+public static class Program {
+	private const string LOGS_PATH = "logs",
+						 SETTINGS_PATH = "settings.json";
 
-		public static void Main(string[] args) {
-			string workingDirectory = Directory.GetCurrentDirectory();
+	private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-			LogManager.Setup().LoadConfiguration(builder => {
-				builder
-					.ForLogger()
-					.FilterMinLevel(LogLevel.Info)
-					.WriteToConsole();
-				builder
-					.ForLogger()
-					.FilterMinLevel(LogLevel.Debug)
-					.WriteToFile(Path.Combine(workingDirectory, "logs", GetDebugLogFileName()));
-			});
-
-			string schemaPath = Path.Combine(workingDirectory, "manifest.xsd");
-			string xmlPath = Path.Combine(workingDirectory, "manifest.xml");
-			string ns = "https://kotor.neocities.org/v1.0/manifest";
-
-			var schemas = new XmlSchemaSet();
-			schemas.Add(ns, new XmlTextReader(schemaPath));
-			var manifestXml = XDocument.Load(xmlPath);
-			bool error = false;
-			manifestXml.Validate(schemas, (sender, e) => {
-				error = true;
-				Logger.Error(e.Message);
-			});
-			if( !error )
-				Logger.Info("Manifest validated.");
-
-			var manifest = Manifest.Load(manifestXml);
-			var todo = new Dictionary<string, IHtmlGeneratorContext>();
-			foreach( var page in manifest.Pages.Values )
-				todo[page.Path] = new ManifestGeneratorContext(manifest, page);
-			var settings = new HtmlGeneratorSettings {
-				WorkingDirectory = workingDirectory
-			};
-			var generator = new HtmlGenerator(settings);
-			generator.Clean();
-			foreach( var (path, context) in todo ) {
-				if( path != "" ) {
-					Logger.Info("Generating '{0}'", context.Page.Path);
-					try {
-						var template = manifest.Pages[path].Source;
-						var htmlDoc = generator.Open(template);
-						var htmlPath = Path.Combine(workingDirectory, settings.Build, context.Page.Path);
-						generator.Generate(htmlDoc, context);
-						Directory.CreateDirectory(Path.GetDirectoryName(htmlPath)!);
-						File.WriteAllText(
-							htmlPath,
-							htmlDoc.DocumentNode.OuterHtml
-						);
-					}
-					catch( Exception ex ) {
-						Logger.Warn(ex);
-					}
-				}
-			}
-			generator.Build();
-
-			LogManager.Shutdown();
+	public static void Main(string[] args) {
+		Setup();
+		try {
+			var buildSettings = LoadBuildSettings(SETTINGS_PATH);
+			var buildSystem = new BuildSystem(buildSettings);
+			Clean(buildSystem);
+			Build(buildSystem);
 		}
+		catch (Exception e) {
+			logger.Fatal(e, "An unexpected error occurred. Exiting...");
+		}
+		finally {
+			Shutdown();
+		}
+	}
 
-		private static string GetDebugLogFileName() {
-			return Guid.NewGuid().ToString("n")	+ ".txt";
+	private static void Build(BuildSystem buildSystem) {
+		logger.Info("Build...");
+		buildSystem.Build();
+		logger.Info("Finished building.");
+	}
+
+	private static void Clean(BuildSystem buildSystem) {
+		logger.Info("Clean...");
+		buildSystem.Clean();
+		logger.Info("Finished cleaning.");
+	}
+
+	private static string GetDebugLogFileName() {
+		return $"{DateTime.Now:yyyy-MM-ddTHH-mm-ss}_{Guid.NewGuid():n}.txt";
+	}
+
+	private static void Setup() {
+		LogManager.Setup().LoadConfiguration(builder => {
+			builder
+				.ForLogger()
+				.FilterMinLevel(LogLevel.Info)
+				.WriteToConsole("${longdate}|${level:uppercase=true}|${message}");
+			builder
+				.ForLogger()
+				.FilterMinLevel(LogLevel.Debug)
+				.WriteToFile(Path.Combine(LOGS_PATH, GetDebugLogFileName()));
+		});
+	}
+
+	private static void Shutdown() {
+		LogManager.Shutdown();
+	}
+
+	private static BuildSettings LoadBuildSettings(string path) {
+		logger.Info("Loading build settings...");
+		if (!File.Exists(path)) {
+			var settings = new BuildSettings();
+			logger.Info("Loaded default build settings.");
+			return settings;
+		}
+		try {
+			var json = File.ReadAllText(path);
+			var settings = JavaScript.FromJson<BuildSettings>(json);
+			logger.Info("Loaded build settings from file \"{0}\".", path);
+			return settings;
+		}
+		catch (Exception e) {
+			logger.Error("Error loading build settings: \"{0}\"", e.Message);
+			throw;
 		}
 	}
 }
